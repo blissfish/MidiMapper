@@ -1,7 +1,7 @@
 import javax.sound.midi.*;
 import java.io.File;
 
-public class Test {
+public class MidiMapper {
     public static final int NOTE_ON = 0x90;
     public static final int NOTE_OFF = 0x80;
     public static final int MM_TRACK_NAME = 0x03;
