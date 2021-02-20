@@ -7,11 +7,18 @@ public class Test {
     public static final int MM_TRACK_NAME = 0x03;
     public static final String[] NOTE_NAMES = {"C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"};
 
+    public static final DrumMapper mapper = new DrumMapper();
+
+
     public static void main(String[] args) throws Exception {
 
         try {
+            String in = "Superior Libraries_N.Y - Avatar_Sticks_Straight 4_4_Song 02 91 BPM_Specials_Variation 12.mid";
+            String out = "out-" + System.currentTimeMillis() + ".mid";
+            System.out.println("Mapping " + in + " => " + out);
 
-            Sequence sequence = MidiSystem.getSequence(new File("midifile2.mid"));
+            Sequence sequence = MidiSystem.getSequence(new File("in/" + in));
+            //Sequence sequence = MidiSystem.getSequence(new File("midifile2.mid"));
 
             int trackNumber = 0;
             for (Track track : sequence.getTracks()) {
@@ -49,7 +56,10 @@ public class Test {
                 System.out.println();
             }
 
-            File f = new File("out.mid");
+            File f = new File("output/" + out);
+            if (!f.exists()) {
+                f.createNewFile();
+            }
             MidiSystem.write(sequence, 1, f);
 
         } catch (Exception e) {
@@ -61,7 +71,6 @@ public class Test {
         System.out.print("Status: " + message.getStatus() + " Type: " + message.getType() + " Length: " + message.getLength() + " Data: [" + new String(message.getData()) + "]");
     }
 
-
     private static void changeTrackName(MetaMessage message) throws InvalidMidiDataException {
         byte[] data = message.getData();
         String trackName = new String(data);
@@ -71,9 +80,12 @@ public class Test {
 
     private static void map(ShortMessage sm, String command) throws InvalidMidiDataException {
         printMessage(sm, command);
-        sm.setMessage(sm.getCommand(), sm.getChannel(), sm.getData1() + 1, sm.getData2());
-        System.out.print(" Mapped To ");
-        printMessage(sm, command);
+        Integer origValue = sm.getData1();
+        Integer mappedValue = DrumMapper.map(origValue);
+        if (mappedValue != null) {
+            sm.setMessage(sm.getCommand(), sm.getChannel(), mappedValue, sm.getData2());
+            //printMessage(sm, command);
+        }
         System.out.println();
     }
 
@@ -81,9 +93,9 @@ public class Test {
         int key = sm.getData1();
         int octave = (key / 12) - 1;
         int note = key % 12;
-        String noteName = NOTE_NAMES[note];
+        String noteName = NOTE_NAMES[note] + octave;
         int velocity = sm.getData2();
-        System.out.print("Command: " + command + " " + noteName + octave + " key=" + key + " velocity: " + velocity);
+        System.out.print("Command: " + command + " " + noteName + " key=" + key + " velocity: " + velocity);
     }
 
 
