@@ -14,7 +14,7 @@ public class Test {
 
         try {
             String in = "Superior Libraries_N.Y - Avatar_Sticks_Straight 4_4_Song 02 91 BPM_Specials_Variation 12.mid";
-            String out = "out-" + System.currentTimeMillis() + ".mid";
+            String out = in + System.currentTimeMillis() + ".mid";
             System.out.println("Mapping " + in + " => " + out);
 
             Sequence sequence = MidiSystem.getSequence(new File("in/" + in));
@@ -34,6 +34,7 @@ public class Test {
                         printMetaMessage(mm);
                         if (mm.getType() == MM_TRACK_NAME) {
                             changeTrackName(mm);
+                            System.out.println(" Changed track name to: ");
                             printMetaMessage(mm);
                         }
 
