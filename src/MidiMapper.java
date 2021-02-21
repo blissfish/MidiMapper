@@ -1,102 +1,109 @@
 import javax.sound.midi.*;
 import java.io.File;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.regex.Matcher;
 
 public class MidiMapper {
     public static final int NOTE_ON = 0x90;
     public static final int NOTE_OFF = 0x80;
     public static final int MM_TRACK_NAME = 0x03;
     public static final String[] NOTE_NAMES = {"C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"};
-
     public static final DrumMapper mapper = new DrumMapper();
-
+    private static final List<File> fileList = new ArrayList();
+    private static String version = "v0.1";
 
     public static void main(String[] args) throws Exception {
+        read(new File("in"));
+        LoggingHelper.print("START processing of [" + fileList.size() + "] files ...");
+        int nrOfFiles = fileList.size();
+        for (int i = 0; i < nrOfFiles; i++) {
+            perform(fileList.get(i), i);
+        }
+        LoggingHelper.print("COMPLETED processing of [" + nrOfFiles + "] files ...");
+    }
 
+    private static void read(File dir) {
+        File[] files = dir.listFiles();
+        for (int i = 0; i < files.length; i++) {
+            File current = files[i];
+            if (files[i].isDirectory()) {
+                read(files[i]);
+            } else {
+                if (files[i].getName().endsWith("mid")) {
+                    fileList.add(files[i]);
+                }
+            }
+        }
+    }
+
+    private static void perform(File sourceFile, int nr) {
         try {
-            String in = "Superior Libraries_N.Y - Avatar_Sticks_Straight 4_4_Song 02 91 BPM_Specials_Variation 12.mid";
-            String out = in + System.currentTimeMillis() + ".mid";
-            System.out.println("Mapping " + in + " => " + out);
-
-            Sequence sequence = MidiSystem.getSequence(new File("in/" + in));
+            String targetFileName = sourceFile.getParent() + "\\" + sourceFile.getName();
+            String in = Matcher.quoteReplacement("in\\");
+            targetFileName = targetFileName.startsWith("in\\") ? targetFileName.replaceFirst(in, "") : targetFileName;
+            File targetFile = new File("output/" + targetFileName);
+            nr += 1;
+            LoggingHelper.print("START mapping of file nr. " + nr + " [" + sourceFile.getName() + "] => [" + targetFile + "]");
+            Sequence sequence = MidiSystem.getSequence(sourceFile);
             //Sequence sequence = MidiSystem.getSequence(new File("midifile2.mid"));
-
             int trackNumber = 0;
             for (Track track : sequence.getTracks()) {
                 trackNumber++;
-                System.out.println("Track " + trackNumber + ": size = " + track.size());
-                System.out.println();
+                LoggingHelper.print("!! Track " + trackNumber + ": size = " + track.size());
                 for (int i = 0; i < track.size(); i++) {
                     MidiEvent event = track.get(i);
-                    System.out.print("@" + event.getTick() + " ");
+                    LoggingHelper.printEvent(event);
+
                     MidiMessage message = event.getMessage();
                     if (message instanceof MetaMessage) {
                         MetaMessage mm = (MetaMessage) message;
-                        printMetaMessage(mm);
+                        //LoggingHelper.printMetaMessage(mm);
                         if (mm.getType() == MM_TRACK_NAME) {
-                            changeTrackName(mm);
-                            System.out.println(" Changed track name to: ");
-                            printMetaMessage(mm);
+                            changeTrackName(mm, targetFileName);
                         }
 
-                        System.out.println();
                     } else if (message instanceof ShortMessage) {
                         ShortMessage sm = (ShortMessage) message;
-                        System.out.print("Channel: " + sm.getChannel() + " ");
                         int command = sm.getCommand();
                         if (command == NOTE_ON) {
                             map(sm, "NOTE_ON");
                         } else if (sm.getCommand() == NOTE_OFF) {
                             map(sm, "NOTE_OFF");
-                        } else {
-                            System.out.println("Command:" + command);
                         }
                     } else {
-                        System.out.println("Other message: " + message.getClass());
+                        LoggingHelper.print("Other message: " + message.getClass());
                     }
                 }
-                System.out.println();
             }
 
-            File f = new File("output/" + out);
-            if (!f.exists()) {
-                f.createNewFile();
+            /**/
+            if (!targetFile.exists()) {
+                targetFile.getParentFile().mkdirs();
+                targetFile.createNewFile();
             }
-            MidiSystem.write(sequence, 1, f);
+
+            MidiSystem.write(sequence, 1, targetFile);
 
         } catch (Exception e) {
-            System.err.println(e);
+            e.printStackTrace(System.err);
         }
     }
 
-    private static void printMetaMessage(MetaMessage message) throws InvalidMidiDataException {
-        System.out.print("Status: " + message.getStatus() + " Type: " + message.getType() + " Length: " + message.getLength() + " Data: [" + new String(message.getData()) + "]");
-    }
-
-    private static void changeTrackName(MetaMessage message) throws InvalidMidiDataException {
-        byte[] data = message.getData();
-        String trackName = new String(data);
-        trackName += " - generated by MidiMapper";
+    private static void changeTrackName(MetaMessage message, String targetFileName) throws InvalidMidiDataException {
+        String trackName = targetFileName;
+        trackName = trackName.replace(".mid", "");
+        trackName += " :: MidiDrumMapper " + version;
         message.setMessage(MM_TRACK_NAME, trackName.getBytes(), trackName.length());
+        LoggingHelper.print("!! Changed track name from [" + new String(message.getData()) + "] to [" + trackName + "]");
     }
 
     private static void map(ShortMessage sm, String command) throws InvalidMidiDataException {
-        printMessage(sm, command);
         Integer origValue = sm.getData1();
         Integer mappedValue = DrumMapper.map(origValue);
         if (mappedValue != null) {
             sm.setMessage(sm.getCommand(), sm.getChannel(), mappedValue, sm.getData2());
-            //printMessage(sm, command);
         }
-        System.out.println();
-    }
-
-    private static void printMessage(ShortMessage sm, String command) {
-        int key = sm.getData1();
-        int octave = (key / 12) - 1;
-        int note = key % 12;
-        String noteName = NOTE_NAMES[note] + octave;
-        int velocity = sm.getData2();
-        System.out.print("Command: " + command + " " + noteName + " key=" + key + " velocity: " + velocity);
     }
 
 
