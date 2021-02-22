@@ -8,7 +8,7 @@ public class DrumMapper {
     private static final Map<Integer, Integer> mappingMap = new HashMap<>();
 
     private static final MappingTable mappingTable = new MappingTable(MappingTable.GM_STANDARD, MappingTable.GGD_INVASION);
-    private static final Boolean MAPPING = true;
+    private static final Boolean MAPPING = false;
 
     static {
         /*//GM Standard => Invasion Default mapping*/
@@ -36,7 +36,6 @@ public class DrumMapper {
         mappingTable.addMapping("G#1", "C2");//HH PCF
         mappingTable.addMapping("C#1", "A#3");//Snare Stick
         mappingTable.addMapping("F#2", "F#4");//Tambourine => Cym 1 Stack Hit
-        System.exit(0);
 
     }
 

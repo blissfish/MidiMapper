@@ -16,7 +16,7 @@ public class MidiMapper {
     public static void main(String[] args) throws Exception {
         read(new File("in"));
         LoggingHelper.print("START processing of [" + fileList.size() + "] files ...");
-        int nrOfFiles = fileList.size();
+        int nrOfFiles = 1;//fileList.size();
         for (int i = 0; i < nrOfFiles; i++) {
             perform(fileList.get(i), i);
         }
@@ -51,6 +51,7 @@ public class MidiMapper {
             for (Track track : sequence.getTracks()) {
                 trackNumber++;
                 LoggingHelper.print("!! Track " + trackNumber + ": size = " + track.size());
+
                 for (int i = 0; i < track.size(); i++) {
                     MidiEvent event = track.get(i);
                     LoggingHelper.printEvent(event);
@@ -60,7 +61,8 @@ public class MidiMapper {
                         MetaMessage mm = (MetaMessage) message;
                         //LoggingHelper.printMetaMessage(mm);
                         if (mm.getType() == MM_TRACK_NAME) {
-                            changeTrackName(mm, targetFileName);
+                            track.remove(event);
+                            //changeTrackName(track, mm, targetFileName);
                         }
 
                     } else if (message instanceof ShortMessage) {
@@ -75,6 +77,8 @@ public class MidiMapper {
                         LoggingHelper.print("Other message: " + message.getClass());
                     }
                 }
+                addTrackName(track, trackNumber, targetFileName);
+
             }
 
             /**/
@@ -90,11 +94,24 @@ public class MidiMapper {
         }
     }
 
-    private static void changeTrackName(MetaMessage message, String targetFileName) throws InvalidMidiDataException {
+    private static void addTrackName(Track track, int trackNumber, String targetFileName) throws InvalidMidiDataException {
+        String trackName = targetFileName;
+        trackName = trackName.replace(".mid", "");
+        trackName += " :: MidiDrumMapper " + version;
+        MetaMessage metaMessage = new MetaMessage();
+        metaMessage.setMessage(MM_TRACK_NAME, trackName.getBytes(), trackName.length());
+        MidiEvent event = new MidiEvent(metaMessage, (long) 0);
+        track.add(new MidiEvent(metaMessage, (long) 0));
+
+        LoggingHelper.print("!! Added track " + trackNumber + " name [" + new String(metaMessage.getData()) + "]");
+    }
+
+    private static void changeTrackName(Track track, MetaMessage message, String targetFileName) throws InvalidMidiDataException {
         String trackName = targetFileName;
         trackName = trackName.replace(".mid", "");
         trackName += " :: MidiDrumMapper " + version;
         message.setMessage(MM_TRACK_NAME, trackName.getBytes(), trackName.length());
+
         LoggingHelper.print("!! Changed track name from [" + new String(message.getData()) + "] to [" + trackName + "]");
     }
 
